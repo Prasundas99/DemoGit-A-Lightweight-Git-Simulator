@@ -71,7 +71,7 @@ internal class Program
 
     private static void GitCatFile(string[] parts)
     {
-        if(parts.Length < 2)
+        if(parts.Length < 3)
         {
             Console.Error.WriteLine("Usage: demogit cat-file <type|size|content> <hash>");
             return;
@@ -158,7 +158,8 @@ internal class Program
         {
             Console.WriteLine("These are the existing demogit commands \n" +
                 " 'demogit init' :-  This creates a .git folder / initialize git \n" +
-                "'demogit remove' :- This removes existing .git folder and clears all git history and everything \n"
+                "'demogit remove' :- This removes existing .git folder and clears all git history and everything \n" +
+                " 'demogit cat-file <type|size|content> <hash>' : It mimics how Git interacts with its object database to retrieve and display information about objects stored in the .git directory"
                 );
         }
         else
