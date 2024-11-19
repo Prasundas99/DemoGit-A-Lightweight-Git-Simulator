@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace DemoGit;
 
@@ -33,7 +35,7 @@ internal class Program
             // Custom handling for 'demoGit'
             if(command == "demogit")
             {
-                HandleDemoGitCommand(arguments);
+                HandleDemoGitCommand(arguments, parts);
             }
             else
             {
@@ -43,7 +45,7 @@ internal class Program
         }
     }
 
-    static void HandleDemoGitCommand(string arguments)
+    static void HandleDemoGitCommand(string arguments, string[] parts)
     {
         // Example of handling different demoGit subcommands
         switch(arguments.ToLower())
@@ -54,12 +56,98 @@ internal class Program
             case "remove":
                 GitRemove();
                 break;
+            case "cat-file":
+                GitCatFile(parts);
+                break;
             case "status":
                 Console.WriteLine("Status of your demoGit");
                 break;
             // Add more demoGit subcommands as needed
             default:
                 HelperDemoGitText(arguments);
+                break;
+        }
+    }
+
+    private static void GitCatFile(string[] parts)
+    {
+        if(parts.Length < 2)
+        {
+            Console.Error.WriteLine("Usage: demogit cat-file <type|size|content> <hash>");
+            return;
+        }
+
+        var command = parts[1]; // Command type: "type", "size", or "content"
+        var hash = parts[2];   // Git object hash
+
+        if(string.IsNullOrEmpty(hash) || hash.Length < 3)
+        {
+            Console.Error.WriteLine("Error: Invalid hash.");
+            return;
+        }
+
+        // Determine the object file path
+        var folderName = hash.Substring(0, 2);
+        var fileName = hash.Substring(2);
+        var path = Path.Combine(".git", "objects", folderName, fileName);
+
+        if(!File.Exists(path))
+        {
+            Console.Error.WriteLine($"Error: Object {hash} not found.");
+            return;
+        }
+
+        // Read and decompress the object file
+        var compressedData = File.ReadAllBytes(path);
+        byte[] decompressedData;
+
+        using(var compressedStream = new MemoryStream(compressedData))
+        using(var decompressionStream = new ZLibStream(compressedStream, CompressionMode.Decompress))
+        using(var resultStream = new MemoryStream())
+        {
+            decompressionStream.CopyTo(resultStream);
+            decompressedData = resultStream.ToArray();
+        }
+
+        // Parse the decompressed data
+        var decompressedContent = Encoding.UTF8.GetString(decompressedData);
+        var nullIndex = decompressedContent.IndexOf('\0');
+        if(nullIndex == -1)
+        {
+            Console.Error.WriteLine("Error: Invalid Git object format.");
+            return;
+        }
+
+        var header = decompressedContent.Substring(0, nullIndex); // e.g., "blob 13"
+        var content = decompressedContent[(nullIndex + 1)..]; // Actual file content
+
+        var headerParts = header.Split(' ');
+        if(headerParts.Length != 2)
+        {
+            Console.Error.WriteLine("Error: Invalid Git object header.");
+            return;
+        }
+
+        var type = headerParts[0]; // e.g., "blob"
+        var size = headerParts[1]; // e.g., "13"
+
+        // Process the command
+        switch(command)
+        {
+            case "type":
+                Console.WriteLine(type);
+                break;
+
+            case "size":
+                Console.WriteLine(size);
+                break;
+
+            case "content":
+                Console.WriteLine(content);
+                break;
+
+            default:
+                Console.Error.WriteLine("Error: Unsupported command.");
                 break;
         }
     }
@@ -129,9 +217,9 @@ internal class Program
             var error = process.StandardError.ReadToEnd();
             process.WaitForExit();
 
-            if (!string.IsNullOrWhiteSpace(output))
+            if(!string.IsNullOrWhiteSpace(output))
                 Console.WriteLine(output);
-            if (!string.IsNullOrWhiteSpace(error))
+            if(!string.IsNullOrWhiteSpace(error))
                 Console.WriteLine($"Error: {error}");
         }
         catch(Exception ex)
