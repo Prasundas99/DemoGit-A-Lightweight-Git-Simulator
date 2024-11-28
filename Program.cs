@@ -1,8 +1,6 @@
 ﻿using DemoGit.Services;
 using System.Diagnostics;
-using System.IO.Compression;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace DemoGit;
 
@@ -52,11 +50,11 @@ internal class Program
         switch(command)
         {
             case "init":
-                DemoGitHelper.GitInitialization();
+                DemoGitCommands.GitInitialization();
                 break;
 
             case "remove":
-                DemoGitHelper.GitRemove();
+                DemoGitCommands.GitRemove();
                 break;
 
             case "cat-file":
@@ -77,11 +75,31 @@ internal class Program
                 var subcommand = subcommandParts[0].ToLower();
                 var objectHash = subcommandParts[1];
 
-                DemoGitHelper.GitCatFile(subcommand, objectHash);
+                DemoGitCommands.GitCatFile(subcommand, objectHash);
                 break;
 
             case "hash-object":
-                DemoGitHelper.HandleHashObjectCommand(parts);
+                DemoGitCommands.HandleHashObjectCommand(parts);
+                break;
+
+            case "ls-tree":
+                if(string.IsNullOrEmpty(hash))
+                {
+                    Console.WriteLine("Usage: demogit ls-tree <tree-hash>");
+                    break;
+                }
+
+                DemoGitCommands.GitLsTree(hash);
+                break;
+
+            case "write-tree":
+                if(string.IsNullOrEmpty(hash))
+                {
+                    Console.WriteLine("Usage: demogit write-tree -w <tree-hash>");
+                    break;
+                }
+
+                DemoGitCommands.GitWriteTree(hash);
                 break;
 
             case "status":
@@ -89,12 +107,12 @@ internal class Program
                 break;
 
             default:
-                DemoGitHelper.DisplayDemoGitHelp();
+                DemoGitCommands.DisplayDemoGitHelp();
                 break;
         }
     }
 
-   
+
     static void RunSystemCommand(string command, string arguments)
     {
         try
