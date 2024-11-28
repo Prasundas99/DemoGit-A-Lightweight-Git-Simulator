@@ -80,6 +80,10 @@ internal class Program
                 DemoGitHelper.GitCatFile(subcommand, objectHash);
                 break;
 
+            case "hash-object":
+                DemoGitHelper.HandleHashObjectCommand(parts);
+                break;
+
             case "status":
                 Console.WriteLine("Status of your demoGit");
                 break;

@@ -1,4 +1,5 @@
 ﻿using System.IO.Compression;
+using System.Linq;
 using System.Text;
 
 namespace DemoGit.Services;
@@ -103,6 +104,70 @@ public static class DemoGitHelper
         using var resultStream = new MemoryStream();
         decompressionStream.CopyTo(resultStream);
         return resultStream.ToArray();
+    }
+    public static void HandleHashObjectCommand(string[] parts)
+    {
+        var command = string.Join(" ", parts);
+        var commands = command.Split(' ');
+        if(commands.Length < 3 || commands[1] != "-w")
+        {
+            Console.WriteLine("Usage: demogit hash-object -w <file>");
+            return;
+        }
+
+        var filePath = commands[2];
+        if(!File.Exists(filePath))
+        {
+            Console.Error.WriteLine($"Error: The file '{filePath}' does not exist.");
+            return;
+        }
+
+        HashObject(filePath);
+    }
+
+    private static void HashObject(string filePath)
+    {
+        // Read the file content
+        var fileContent = File.ReadAllBytes(filePath);
+
+        // Create the object header
+        var header = $"blob {fileContent.Length}\0";
+        var headerBytes = Encoding.UTF8.GetBytes(header);
+
+        // Combine the header and file content
+        var objectData = new byte[headerBytes.Length + fileContent.Length];
+        Array.Copy(headerBytes, 0, objectData, 0, headerBytes.Length);
+        Array.Copy(fileContent, 0, objectData, headerBytes.Length, fileContent.Length);
+
+        // Compute the SHA-1 hash of the object data
+        using var sha1 = System.Security.Cryptography.SHA1.Create();
+        var hashBytes = sha1.ComputeHash(objectData);
+        var hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+
+        // Store the object in the .git/objects directory
+        StoreGitObject(hash, objectData);
+
+        Console.WriteLine($"Hash: {hash}");
+    }
+
+    private static void StoreGitObject(string hash, byte[] objectData)
+    {
+        // The first two characters of the hash are used to create the folder
+        var folderName = hash.Substring(0, 2);
+        var fileName = hash.Substring(2);
+
+        // Create the directories if they don't exist
+        var objectDirectory = Path.Combine(".git", "objects", folderName);
+        if(!Directory.Exists(objectDirectory))
+        {
+            Directory.CreateDirectory(objectDirectory);
+        }
+
+        // Compress and save the object to a file
+        var objectFilePath = Path.Combine(objectDirectory, fileName);
+        using var fileStream = new FileStream(objectFilePath, FileMode.Create, FileAccess.Write);
+        using var zlibStream = new ZLibStream(fileStream, CompressionMode.Compress);
+        zlibStream.Write(objectData, 0, objectData.Length);
     }
 
 }
