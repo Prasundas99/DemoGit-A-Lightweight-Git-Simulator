@@ -170,6 +170,10 @@ public static class DemoGitCommands
                 File.Create(indexPath).Dispose();
             }
 
+            // Load .gitignore
+            var gitignorePath = Path.Combine(Directory.GetCurrentDirectory(), ".gitignore");
+            var ignorePatterns = DemoGitHelper.LoadGitignorePatterns(gitignorePath);
+
             // Determine if it's a single file or directory
             var filesToAdd = path == "."
                 ? Directory.GetFiles(Directory.GetCurrentDirectory(), "*", SearchOption.AllDirectories)
@@ -183,6 +187,13 @@ public static class DemoGitCommands
                 if(!File.Exists(file))
                 {
                     Console.Error.WriteLine($"Warning: File '{file}' does not exist.");
+                    continue;
+                }
+
+                // Skip files that match .gitignore patterns
+                if(DemoGitHelper.ShouldIgnoreFile(file, ignorePatterns))
+                {
+                    Console.WriteLine($"Ignoring file: {file}");
                     continue;
                 }
 
@@ -244,6 +255,10 @@ public static class DemoGitCommands
                 return;
             }
 
+            // Load .gitignore patterns
+            var gitignorePath = Path.Combine(Directory.GetCurrentDirectory(), ".gitignore");
+            var ignorePatterns = DemoGitHelper.LoadGitignorePatterns(gitignorePath);
+
             // Read the index file to get the list of staged files
             var stagedFiles = File.ReadAllLines(indexPath).ToList();
 
@@ -251,28 +266,32 @@ public static class DemoGitCommands
             var workingDirectoryFiles = Directory.GetFiles(Directory.GetCurrentDirectory(), "*", SearchOption.AllDirectories)
                 .Select(f => Path.GetRelativePath(Directory.GetCurrentDirectory(), f)).ToList();
 
-            // Display staged files
+
+            // Display staged files (ignoring files in .gitignore)
             Console.WriteLine("Staged files:");
             foreach(var stagedFile in stagedFiles)
             {
-                Console.WriteLine($"  {stagedFile}");
+                if(!DemoGitHelper.IsIgnored(stagedFile, ignorePatterns))
+                {
+                    Console.WriteLine($"  {stagedFile}");
+                }
             }
 
-            // Display unstaged files
+            // Display unstaged files (ignoring files in .gitignore)
             Console.WriteLine("\nUnstaged files:");
             foreach(var file in workingDirectoryFiles)
             {
-                if(!stagedFiles.Contains(file))
+                if(!stagedFiles.Contains(file) && !DemoGitHelper.IsIgnored(file, ignorePatterns))
                 {
                     Console.WriteLine($"  {file}");
                 }
             }
 
-            // Handle untracked files (files in working directory not added to index)
+            // Handle untracked files (files in working directory not added to index or ignored)
             Console.WriteLine("\nUntracked files:");
             foreach(var file in workingDirectoryFiles)
             {
-                if(!stagedFiles.Contains(file) && !File.Exists(Path.Combine(".git", "objects", file)))
+                if(!stagedFiles.Contains(file) && !File.Exists(Path.Combine(".git", "objects", file)) && !DemoGitHelper.IsIgnored(file, ignorePatterns))
                 {
                     Console.WriteLine($"  {file}");
                 }
@@ -283,4 +302,5 @@ public static class DemoGitCommands
             Console.WriteLine($"Error displaying status: {ex.Message}");
         }
     }
+
 }

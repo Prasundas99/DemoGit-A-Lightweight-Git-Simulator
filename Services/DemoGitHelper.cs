@@ -216,4 +216,48 @@ public static class DemoGitHelper
             throw;
         }
     }
+
+
+    //for ignoring files
+    public static List<string> LoadGitignorePatterns(string gitignorePath)
+    {
+        var patterns = new List<string>();
+        if(File.Exists(gitignorePath))
+        {
+            // Read lines and clean up for patterns (e.g., ignore comments and empty lines)
+            patterns = File.ReadAllLines(gitignorePath)
+                           .Where(line => !string.IsNullOrWhiteSpace(line) && !line.StartsWith("#"))
+                           .Select(line => line.Trim())
+                           .ToList();
+        }
+        return patterns;
+    }
+
+    public static bool ShouldIgnoreFile(string file, List<string> ignorePatterns)
+    {
+        // Ignore files starting with a dot (.) by default
+        if(Path.GetFileName(file).StartsWith("."))
+        {
+            return true;
+        }
+
+        foreach(var pattern in ignorePatterns)
+        {
+            if(MatchPattern(file, pattern))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static bool MatchPattern(string file, string pattern)
+    {
+        return file.Contains(pattern);
+    }
+
+    public static bool IsIgnored(string file, List<string> ignorePatterns)
+    {
+        return ignorePatterns.Any(pattern => DemoGitHelper.MatchPattern(file, pattern));
+    }
 }
