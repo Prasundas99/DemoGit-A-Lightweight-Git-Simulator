@@ -219,22 +219,6 @@ public static class DemoGitCommands
         }
     }
 
-    public static void DisplayDemoGitHelp()
-    {
-        try
-        {
-            Console.WriteLine("These are the existing demoGit commands: \n" +
-                "'demogit init'      : Initializes demoGit (creates .git folder)\n" +
-                "'demogit remove'    : Removes demoGit and clears all git history\n" +
-                "'demogit cat-file'  : Mimics Git's object database (use with <type|size|content> <hash>)\n" +
-                "'demogit status'    : Displays status of demoGit");
-        }
-        catch(Exception ex)
-        {
-            throw new InvalidOperationException($"Error in DisplayDemoGitHelp: {ex.Message}", ex);
-        }
-    }
-
     public static void DisplayStatus()
     {
         try
@@ -303,4 +287,64 @@ public static class DemoGitCommands
         }
     }
 
+    public static void UnstageAll()
+    {
+        try
+        {
+            // Check if the .git directory exists
+            if(!Directory.Exists(".git"))
+            {
+                Console.WriteLine("Error: This is not a DemoGit repository.");
+                return;
+            }
+
+            var indexPath = Path.Combine(".git", "index");
+
+            // Check if the index file exists
+            if(!File.Exists(indexPath))
+            {
+                Console.WriteLine("No files are currently staged.");
+                return;
+            }
+
+            // Read the index file to get the staged files
+            var stagedFiles = File.ReadAllLines(indexPath).ToList();
+
+            // If no files are staged, inform the user
+            if(stagedFiles.Count == 0)
+            {
+                Console.WriteLine("No files are staged.");
+                return;
+            }
+
+            // Clear all files from the staged list (unstage everything)
+            stagedFiles.Clear();
+
+            // Save the updated (empty) index
+            File.WriteAllLines(indexPath, stagedFiles);
+
+            Console.WriteLine("Successfully unstaged all files.");
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Error unstaging all files: {ex.Message}");
+        }
+    }
+
+
+    public static void DisplayDemoGitHelp()
+    {
+        try
+        {
+            Console.WriteLine("These are the existing demoGit commands: \n" +
+                "'demogit init'      : Initializes demoGit (creates .git folder)\n" +
+                "'demogit remove'    : Removes demoGit and clears all git history\n" +
+                "'demogit cat-file'  : Mimics Git's object database (use with <type|size|content> <hash>)\n" +
+                "'demogit status'    : Displays status of demoGit");
+        }
+        catch(Exception ex)
+        {
+            throw new InvalidOperationException($"Error in DisplayDemoGitHelp: {ex.Message}", ex);
+        }
+    }
 }

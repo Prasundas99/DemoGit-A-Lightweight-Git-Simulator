@@ -130,6 +130,14 @@ internal class Program
                 DemoGitCommands.AddToIndex(hash);
                 break;
 
+            case "unstage-all":
+                if(string.IsNullOrEmpty(hash))
+                {
+                    throw new ArgumentException("Usage: demogit unstage-all");
+                }
+                DemoGitCommands.UnstageAll();
+                break;
+
             case "status":
                 DemoGitCommands.DisplayStatus();
                 break;
