@@ -8,28 +8,49 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        while(true)
+        try
         {
-            var path = Directory.GetCurrentDirectory();
-            PrintPrompt(path);
-
-            var input = Console.ReadLine();
-            if(string.IsNullOrWhiteSpace(input))
+            while(true)
             {
-                Console.WriteLine("Input is not valid");
-                continue;
-            }
+                var path = Directory.GetCurrentDirectory();
+                PrintPrompt(path);
 
-            var (command, arguments) = ParseInput(input);
+                var input = Console.ReadLine();
+                if(string.IsNullOrWhiteSpace(input))
+                {
+                    Console.WriteLine("Error: Input cannot be empty or whitespace.");
+                    continue;
+                }
 
-            if(command == "demogit")
-            {
-                HandleDemoGitCommand(arguments);
+                var (command, arguments) = ParseInput(input);
+
+                if(command == "demogit")
+                {
+                    try
+                    {
+                        HandleDemoGitCommand(arguments);
+                    }
+                    catch(Exception ex)
+                    {
+                        Console.WriteLine($"Error in DemoGit command: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    try
+                    {
+                        RunSystemCommand(command, arguments);
+                    }
+                    catch(Exception ex)
+                    {
+                        Console.WriteLine($"Error running system command '{command}': {ex.Message}");
+                    }
+                }
             }
-            else
-            {
-                RunSystemCommand(command, arguments);
-            }
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Critical error: {ex.Message}. The application will terminate.");
         }
     }
 
@@ -43,6 +64,11 @@ internal class Program
 
     static void HandleDemoGitCommand(string arguments)
     {
+        if(string.IsNullOrWhiteSpace(arguments))
+        {
+            throw new ArgumentException("Error: No arguments provided for the 'demogit' command.");
+        }
+
         var parts = arguments.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         var command = parts[0].ToLower();
         var hash = parts.Length > 1 ? parts[1] : "";
@@ -60,21 +86,17 @@ internal class Program
             case "cat-file":
                 if(string.IsNullOrEmpty(hash))
                 {
-                    Console.WriteLine("Usage: demogit cat-file <type|size|content> <hash>");
-                    break;
+                    throw new ArgumentException("Usage: demogit cat-file <type|size|content> <hash>");
                 }
 
-                // We expect two arguments for cat-file: <type|size|content> <hash>
                 var subcommandParts = hash.Split(' ', 2);
                 if(subcommandParts.Length < 2)
                 {
-                    Console.WriteLine("Usage: demogit cat-file <type|size|content> <hash>");
-                    break;
+                    throw new ArgumentException("Usage: demogit cat-file <type|size|content> <hash>");
                 }
 
                 var subcommand = subcommandParts[0].ToLower();
                 var objectHash = subcommandParts[1];
-
                 DemoGitCommands.GitCatFile(subcommand, objectHash);
                 break;
 
@@ -85,8 +107,7 @@ internal class Program
             case "ls-tree":
                 if(string.IsNullOrEmpty(hash))
                 {
-                    Console.WriteLine("Usage: demogit ls-tree <tree-hash>");
-                    break;
+                    throw new ArgumentException("Usage: demogit ls-tree <tree-hash>");
                 }
 
                 DemoGitCommands.GitLsTree(hash);
@@ -95,15 +116,22 @@ internal class Program
             case "write-tree":
                 if(string.IsNullOrEmpty(hash))
                 {
-                    Console.WriteLine("Usage: demogit write-tree -w <tree-hash>");
-                    break;
+                    throw new ArgumentException("Usage: demogit write-tree -w <tree-hash>");
                 }
 
                 DemoGitCommands.GitWriteTree(hash);
                 break;
 
+            case "add":
+                if(string.IsNullOrEmpty(hash))
+                {
+                    throw new ArgumentException("Usage: demogit add <file-name|.>");
+                }
+                DemoGitCommands.AddToIndex(hash);
+                break;
+
             case "status":
-                Console.WriteLine("Status of your demoGit");
+                Console.WriteLine("Status of your demoGit repository:");
                 break;
 
             default:
@@ -112,9 +140,13 @@ internal class Program
         }
     }
 
-
     static void RunSystemCommand(string command, string arguments)
     {
+        if(string.IsNullOrWhiteSpace(command))
+        {
+            throw new ArgumentException("Error: System command cannot be empty.");
+        }
+
         try
         {
             var processInfo = new ProcessStartInfo
@@ -128,16 +160,28 @@ internal class Program
             };
 
             using var process = Process.Start(processInfo);
-            var output = process?.StandardOutput.ReadToEnd();
-            var error = process?.StandardError.ReadToEnd();
-            process?.WaitForExit();
+            if(process == null)
+            {
+                throw new InvalidOperationException("Error: Failed to start the system process.");
+            }
 
-            if(!string.IsNullOrWhiteSpace(output)) Console.WriteLine(output);
-            if(!string.IsNullOrWhiteSpace(error)) Console.WriteLine($"Error: {error}");
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if(!string.IsNullOrWhiteSpace(output))
+            {
+                Console.WriteLine(output);
+            }
+
+            if(!string.IsNullOrWhiteSpace(error))
+            {
+                Console.WriteLine($"Error: {error}");
+            }
         }
         catch(Exception ex)
         {
-            Console.WriteLine($"Failed to run command '{command}': {ex.Message}");
+            throw new InvalidOperationException($"Failed to run system command: {ex.Message}", ex);
         }
     }
 
@@ -145,8 +189,15 @@ internal class Program
 
     static void PrintPrompt(string path)
     {
-        var dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        var os = IsWindows() ? "Windows" : "Linux";
-        Console.WriteLine($"[{dateTime}] {os} : {path} > ");
+        try
+        {
+            var dateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            var os = IsWindows() ? "Windows" : "Linux";
+            Console.WriteLine($"[{dateTime}] {os} : {path} > ");
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Error displaying prompt: {ex.Message}");
+        }
     }
 }
