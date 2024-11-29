@@ -131,7 +131,7 @@ internal class Program
                 break;
 
             case "status":
-                Console.WriteLine("Status of your demoGit repository:");
+                DemoGitCommands.DisplayStatus();
                 break;
 
             default:

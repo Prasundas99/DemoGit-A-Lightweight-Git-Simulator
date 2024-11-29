@@ -1,4 +1,6 @@
-﻿namespace DemoGit.Services;
+﻿using System.IO;
+
+namespace DemoGit.Services;
 
 public static class DemoGitCommands
 {
@@ -152,7 +154,7 @@ public static class DemoGitCommands
         }
     }
 
-    public static void AddToIndex(string hash)
+    public static void AddToIndex(string path)
     {
         try
         {
@@ -161,7 +163,44 @@ public static class DemoGitCommands
                 throw new InvalidOperationException("Not a demoGit repository (or any of the parent directories).");
             }
 
-            // Implementation for adding to index (Placeholder for now)
+            var indexPath = Path.Combine(".git", "index");
+
+            if(!File.Exists(indexPath)) 
+            { 
+                File.Create(indexPath).Dispose();
+            }
+
+            // Determine if it's a single file or directory
+            var filesToAdd = path == "."
+                ? Directory.GetFiles(Directory.GetCurrentDirectory(), "*", SearchOption.AllDirectories)
+                : [path];
+
+
+            var indexEntries = File.ReadAllLines(indexPath).ToList();
+
+            foreach(var file in filesToAdd)
+            {
+                if(!File.Exists(file))
+                {
+                    Console.Error.WriteLine($"Warning: File '{file}' does not exist.");
+                    continue;
+                }
+
+                var hash = DemoGitHelper.CreateBlobObject(file);
+                // Add to the index
+                var relativePath = Path.GetRelativePath(Directory.GetCurrentDirectory(), file);
+
+                var entry = $"{hash} {relativePath}";
+                if(!indexEntries.Contains(entry))
+                {
+                    indexEntries.Add(entry);
+                }
+            }
+
+            // Save the updated index
+            File.WriteAllLines(indexPath, indexEntries);
+
+            Console.WriteLine($"Successfully added {path} to the index.");
         }
         catch(Exception ex)
         {
@@ -182,6 +221,66 @@ public static class DemoGitCommands
         catch(Exception ex)
         {
             throw new InvalidOperationException($"Error in DisplayDemoGitHelp: {ex.Message}", ex);
+        }
+    }
+
+    public static void DisplayStatus()
+    {
+        try
+        {
+            // Check if the .git directory exists
+            if(!Directory.Exists(".git"))
+            {
+                Console.WriteLine("Error: This is not a DemoGit repository.");
+                return;
+            }
+
+            var indexPath = Path.Combine(".git", "index");
+
+            // Check if the index file exists
+            if(!File.Exists(indexPath))
+            {
+                Console.WriteLine("No files are currently staged.");
+                return;
+            }
+
+            // Read the index file to get the list of staged files
+            var stagedFiles = File.ReadAllLines(indexPath).ToList();
+
+            // List files in the current directory (working tree)
+            var workingDirectoryFiles = Directory.GetFiles(Directory.GetCurrentDirectory(), "*", SearchOption.AllDirectories)
+                .Select(f => Path.GetRelativePath(Directory.GetCurrentDirectory(), f)).ToList();
+
+            // Display staged files
+            Console.WriteLine("Staged files:");
+            foreach(var stagedFile in stagedFiles)
+            {
+                Console.WriteLine($"  {stagedFile}");
+            }
+
+            // Display unstaged files
+            Console.WriteLine("\nUnstaged files:");
+            foreach(var file in workingDirectoryFiles)
+            {
+                if(!stagedFiles.Contains(file))
+                {
+                    Console.WriteLine($"  {file}");
+                }
+            }
+
+            // Handle untracked files (files in working directory not added to index)
+            Console.WriteLine("\nUntracked files:");
+            foreach(var file in workingDirectoryFiles)
+            {
+                if(!stagedFiles.Contains(file) && !File.Exists(Path.Combine(".git", "objects", file)))
+                {
+                    Console.WriteLine($"  {file}");
+                }
+            }
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Error displaying status: {ex.Message}");
         }
     }
 }
