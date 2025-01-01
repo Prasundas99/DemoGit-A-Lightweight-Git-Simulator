@@ -2,6 +2,13 @@
 
 A lightweight implementation of Git fundamentals in C#, designed for educational purposes. This project demonstrates the core concepts of Git's internal workings while providing basic GitHub integration.
 
+## Video Demo 
+
+
+https://github.com/user-attachments/assets/5d93ae48-4c3f-4591-bece-be5ca6f9ab4e
+
+
+
 ## Features
 
 - **Basic Git Operations**
