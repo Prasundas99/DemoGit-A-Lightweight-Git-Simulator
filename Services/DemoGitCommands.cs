@@ -338,11 +338,27 @@ public static class DemoGitCommands
     {
         try
         {
-            Console.WriteLine("These are the existing demoGit commands: \n" +
-                "'demogit init'      : Initializes demoGit (creates .git folder)\n" +
-                "'demogit remove'    : Removes demoGit and clears all git history\n" +
-                "'demogit cat-file'  : Mimics Git's object database (use with <type|size|content> <hash>)\n" +
-                "'demogit status'    : Displays status of demoGit");
+            Console.WriteLine("DemoGit - Available Commands:\n");
+
+            Console.WriteLine("Repository Initialization:");
+            Console.WriteLine("  init                    : Initialize a new DemoGit repository");
+            Console.WriteLine("  remove                  : Remove DemoGit repository and clear history");
+            Console.WriteLine("  clone <token> <url>     : Clone a repository from GitHub\n");
+
+            Console.WriteLine("Working with Changes:");
+            Console.WriteLine("  add <file|.>            : Add file(s) to the staging area");
+            Console.WriteLine("  status                  : Show working tree status");
+            Console.WriteLine("  unstage-all             : Remove all files from staging area");
+            Console.WriteLine("  commit <message>        : Record changes to the repository");
+            Console.WriteLine("  push <token> <repo>     : Push to GitHub repository\n");
+
+            Console.WriteLine("Examining Repository:");
+            Console.WriteLine("  cat-file <type|size|content> <hash> : Display object information");
+            Console.WriteLine("  hash-object -w <file>   : Hash a file and store it");
+            Console.WriteLine("  ls-tree <tree-hash>     : List contents of a tree object");
+            Console.WriteLine("  write-tree -w <hash>    : Create a tree object from current index\n");
+
+            Console.WriteLine("Note: <token> refers to your GitHub Personal Access Token");
         }
         catch(Exception ex)
         {
