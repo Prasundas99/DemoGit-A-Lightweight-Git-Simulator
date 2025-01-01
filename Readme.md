@@ -1,4 +1,4 @@
-# DemoGit
+# DemoGit - A Lightweight Git Simulator
 
 A lightweight implementation of Git fundamentals in C#, designed for educational purposes. This project demonstrates the core concepts of Git's internal workings while providing basic GitHub integration.
 
