@@ -260,4 +260,97 @@ public static class DemoGitHelper
     {
         return ignorePatterns.Any(pattern => DemoGitHelper.MatchPattern(file, pattern));
     }
+
+    public static string CreateCommitObject(string message, string treeHash, string parentHash = null)
+    {
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var author = "Demo User <demo@example.com>";
+
+        var commitContent = new StringBuilder();
+        commitContent.AppendLine($"tree {treeHash}");
+
+        if(!string.IsNullOrEmpty(parentHash))
+        {
+            commitContent.AppendLine($"parent {parentHash}");
+        }
+
+        commitContent.AppendLine($"author {author} {timestamp} +0000");
+        commitContent.AppendLine($"committer {author} {timestamp} +0000");
+        commitContent.AppendLine();
+        commitContent.AppendLine(message);
+
+        var content = commitContent.ToString();
+        var header = $"commit {content.Length}\0";
+        var commitData = Encoding.UTF8.GetBytes(header + content);
+
+        return HashObject(commitData);
+    }
+
+    public static string GetCurrentBranch()
+    {
+        var headContent = File.ReadAllText(Path.Combine(".git", "HEAD")).Trim();
+        if(headContent.StartsWith("ref: "))
+        {
+            return headContent.Substring(5);
+        }
+        return headContent;
+    }
+
+    public static string GetLastCommitHash()
+    {
+        var branch = GetCurrentBranch();
+        var branchPath = Path.Combine(".git", branch);
+
+        if(File.Exists(branchPath))
+        {
+            return File.ReadAllText(branchPath).Trim();
+        }
+        return null;
+    }
+
+    public static void UpdateRef(string refPath, string hash)
+    {
+        var fullPath = Path.Combine(".git", refPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+        File.WriteAllText(fullPath, hash + "\n");
+    }
+
+    public static string CreateTreeFromIndex()
+    {
+        var indexPath = Path.Combine(".git", "index");
+        if(!File.Exists(indexPath))
+        {
+            throw new InvalidOperationException("Nothing to commit (index is empty)");
+        }
+
+        var entries = new List<(string mode, string type, string hash, string name)>();
+        var indexLines = File.ReadAllLines(indexPath);
+
+        foreach(var line in indexLines)
+        {
+            var parts = line.Split(' ', 2);
+            if(parts.Length != 2) continue;
+
+            var hash = parts[0];
+            var path = parts[1];
+
+            entries.Add(("100644", "blob", hash, path));
+        }
+
+        // Sort entries by name
+        entries.Sort((a, b) => string.Compare(a.name, b.name, StringComparison.Ordinal));
+
+        // Create tree content
+        var treeContent = new StringBuilder();
+        foreach(var (mode, type, hash, name) in entries)
+        {
+            treeContent.Append($"{mode} {type} {hash}\t{name}\0");
+        }
+
+        var content = treeContent.ToString();
+        var header = $"tree {content.Length}\0";
+        var treeData = Encoding.UTF8.GetBytes(header + content);
+
+        return HashObject(treeData);
+    }
 }

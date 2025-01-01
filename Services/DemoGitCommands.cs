@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace DemoGit.Services;
 
@@ -345,6 +347,123 @@ public static class DemoGitCommands
         catch(Exception ex)
         {
             throw new InvalidOperationException($"Error in DisplayDemoGitHelp: {ex.Message}", ex);
+        }
+    }
+
+    public static void GitCommit(string message)
+    {
+        if(string.IsNullOrWhiteSpace(message))
+        {
+            throw new ArgumentException("Commit message cannot be empty");
+        }
+
+        // Create tree from current index
+        var treeHash = DemoGitHelper.CreateTreeFromIndex();
+
+        // Get parent commit hash (if any)
+        var parentHash = DemoGitHelper.GetLastCommitHash();
+
+        // Create commit object
+        var commitHash = DemoGitHelper.CreateCommitObject(message, treeHash, parentHash);
+
+        // Update current branch reference
+        var branch = DemoGitHelper.GetCurrentBranch();
+        DemoGitHelper.UpdateRef(branch, commitHash);
+
+        Console.WriteLine($"[{branch} {commitHash}] {message}");
+    }
+
+    public static async Task GitPush(string token, string repoName)
+    {
+        try
+        {
+            if(!Directory.Exists(".git"))
+            {
+                throw new InvalidOperationException("Not a git repository");
+            }
+
+            var api = new GitHubApi(token);
+            await api.PushToGitHub(repoName, Directory.GetCurrentDirectory());
+            Console.WriteLine($"Successfully pushed to GitHub repository: {repoName}");
+        }
+        catch(Exception ex)
+        {
+            throw new InvalidOperationException($"Push failed: {ex.Message}", ex);
+        }
+    }
+
+    public static async Task GitClone(string token, string repoUrl, string localPath)
+    {
+        try
+        {
+            // Extract repo name from URL
+            var repoName = Path.GetFileNameWithoutExtension(repoUrl);
+
+            // Create local directory
+            Directory.CreateDirectory(localPath);
+
+            var api = new GitHubApi(token);
+
+            // Initialize git repository
+            var gitPath = Path.Combine(localPath, ".git");
+            Directory.CreateDirectory(gitPath);
+            Directory.CreateDirectory(Path.Combine(gitPath, "objects"));
+            Directory.CreateDirectory(Path.Combine(gitPath, "refs", "heads"));
+            File.WriteAllText(Path.Combine(gitPath, "HEAD"), "ref: refs/heads/main\n");
+
+            // Download repository content
+            await DownloadRepository(token, repoUrl, localPath);
+
+            Console.WriteLine($"Successfully cloned repository to {localPath}");
+        }
+        catch(Exception ex)
+        {
+            throw new InvalidOperationException($"Clone failed: {ex.Message}", ex);
+        }
+    }
+
+    private static async Task DownloadRepository(string token, string repoUrl, string localPath)
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.v3+json"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("DemoGit", "1.0"));
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", token);
+
+        // Convert github.com URL to api.github.com
+        var apiUrl = repoUrl.Replace("https://github.com", "https://api.github.com/repos")
+                           .TrimEnd(".git".ToCharArray());
+
+        // Get repository content
+        var response = await client.GetStringAsync($"{apiUrl}/git/trees/main?recursive=1");
+        using var document = JsonDocument.Parse(response);
+        var tree = document.RootElement.GetProperty("tree");
+
+        foreach(var item in tree.EnumerateArray())
+        {
+            var path = item.GetProperty("path").GetString();
+            var type = item.GetProperty("type").GetString();
+            var sha = item.GetProperty("sha").GetString();
+
+            if(type == "blob")
+            {
+                // Download and save file
+                var content = await client.GetStringAsync($"{apiUrl}/git/blobs/{sha}");
+                using var blob = JsonDocument.Parse(content);
+                var data = blob.RootElement.GetProperty("content").GetString();
+                var encoding = blob.RootElement.GetProperty("encoding").GetString();
+
+                var filePath = Path.Combine(localPath, path);
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath));
+
+                if(encoding == "base64")
+                {
+                    await File.WriteAllBytesAsync(filePath, Convert.FromBase64String(data));
+                }
+                else
+                {
+                    await File.WriteAllTextAsync(filePath, data);
+                }
+            }
         }
     }
 }

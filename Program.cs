@@ -6,7 +6,7 @@ namespace DemoGit;
 
 internal class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
         try
         {
@@ -28,7 +28,7 @@ internal class Program
                 {
                     try
                     {
-                        HandleDemoGitCommand(arguments);
+                        await HandleDemoGitCommandAsync(arguments);
                     }
                     catch(Exception ex)
                     {
@@ -62,7 +62,7 @@ internal class Program
         return (command, arguments);
     }
 
-    static void HandleDemoGitCommand(string arguments)
+    static async Task HandleDemoGitCommandAsync(string arguments)
     {
         if(string.IsNullOrWhiteSpace(arguments))
         {
@@ -131,15 +131,45 @@ internal class Program
                 break;
 
             case "unstage-all":
-                if(string.IsNullOrEmpty(hash))
-                {
-                    throw new ArgumentException("Usage: demogit unstage-all");
-                }
                 DemoGitCommands.UnstageAll();
                 break;
 
             case "status":
                 DemoGitCommands.DisplayStatus();
+                break;
+
+            case "commit":
+                if(string.IsNullOrEmpty(hash))
+                {
+                    throw new ArgumentException("Usage: demogit commit <message>");
+                }
+                DemoGitCommands.GitCommit(hash);
+                break;
+
+            case "push":
+                if(string.IsNullOrEmpty(hash))
+                {
+                    throw new ArgumentException("Usage: demogit push <token> <repository-name>");
+                }
+                var pushArgs = hash.Split(' ', 2);
+                if(pushArgs.Length != 2)
+                {
+                    throw new ArgumentException("Usage: demogit push <token> <repository-name>");
+                }
+                await DemoGitCommands.GitPush(pushArgs[0], pushArgs[1]);
+                break;
+
+            case "clone":
+                if(string.IsNullOrEmpty(hash))
+                {
+                    throw new ArgumentException("Usage: demogit clone <token> <repository-url>");
+                }
+                var cloneArgs = hash.Split(' ', 2);
+                if(cloneArgs.Length != 2)
+                {
+                    throw new ArgumentException("Usage: demogit clone <token> <repository-url>");
+                }
+                await DemoGitCommands.GitClone(cloneArgs[0], cloneArgs[1], Directory.GetCurrentDirectory());
                 break;
 
             default:
