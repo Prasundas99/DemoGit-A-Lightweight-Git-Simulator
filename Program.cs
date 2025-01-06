@@ -13,7 +13,10 @@ internal class Program(DemoGit demoGit)
         var host = Host.CreateDefaultBuilder(args)
                     .ConfigureServices((context, services) =>
                     {
+                        services.AddSingleton<DemoGit>();
                         services.AddSingleton<Program>();
+
+                        services.AddTransient<DemoGitCommands>();
                     })
                     .Build();
 
