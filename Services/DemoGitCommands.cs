@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace DemoGit.Services;
 
-public static class DemoGitCommands
+public class DemoGitCommands
 {
     public static void GitInitialization()
     {
@@ -389,7 +389,7 @@ public static class DemoGitCommands
         Console.WriteLine($"[{branch} {commitHash}] {message}");
     }
 
-    public static async Task GitPush(string token, string repoName)
+    public async Task GitPush(string token, string repoName)
     {
         try
         {
